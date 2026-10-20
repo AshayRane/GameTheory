@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Axelrod Tournament — Prisoner's Dilemma</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0b0b0c;
+    --panel:#141416;
+    --panel-2:#1a1a1d;
+    --border:#26262b;
+    --ink:#f4f4f2;
+    --muted:#9a9aa2;
+    --accent:#f2c94c;
+    --cooperate:#3ecf6e;
+    --cooperate-dim:#173323;
+    --defect:#ef4a4a;
+    --defect-dim:#3a1a1a;
+    --nice:#3ecf6e;
+    --nasty:#ef4a4a;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{background:var(--bg);color:var(--ink)}
+  body{
+    font-family:"Space Grotesk",system-ui,sans-serif;
+    -webkit-font-smoothing:antialiased;
+    padding:32px 28px 48px;
+    max-width:1240px;margin:0 auto;
+  }
+  .mono{font-family:"IBM Plex Mono",ui-monospace,monospace}
+
+  /* ---------- header ---------- */
+  header{margin-bottom:28px}
+  .kicker{
+    font-size:12px;letter-spacing:.22em;text-transform:uppercase;
+    color:var(--accent);font-weight:500;margin-bottom:8px;
+  }
+  h1{font-size:34px;font-weight:700;letter-spacing:-.01em;line-height:1.1}
+  .sub{color:var(--muted);margin-top:8px;font-size:15px;max-width:640px;line-height:1.5}
+
+  /* ---------- top row: payoff + roster ---------- */
+  .top{display:grid;grid-template-columns:auto 1fr;gap:14px;margin-bottom:22px}
+  .card{
+    background:var(--panel);border:1px solid var(--border);
+    border-radius:10px;padding:16px 18px;
+  }
+  .card h2{
+    font-size:11px;letter-spacing:.18em;text-transform:uppercase;
+    color:var(--muted);font-weight:500;margin-bottom:12px;
+  }
+  .payoff{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;width:max-content}
+  .cell{
+    background:var(--panel-2);border:1px solid var(--border);border-radius:8px;
+    padding:10px 14px;min-width:118px;
+  }
+  .cell .lbl{font-size:11px;color:var(--muted);margin-bottom:4px;letter-spacing:.04em}
+  .cell .val{font-size:17px;font-weight:600}
+  .cell .val .mono{font-size:14px}
+  .co{color:var(--cooperate)} .de{color:var(--defect)}
+
+  .roster{display:flex;flex-direction:column;gap:6px}
+  .strat-row{
+    display:flex;align-items:center;gap:12px;
+    background:var(--panel-2);border:1px solid var(--border);
+    border-radius:8px;padding:8px 12px;
+  }
+  .dot{width:10px;height:10px;border-radius:50%;flex:none}
+  .strat-row .name{font-weight:600;font-size:14px;min-width:150px}
+  .strat-row .desc{color:var(--muted);font-size:12.5px;flex:1;line-height:1.35}
+  .tag{
+    font-size:10px;letter-spacing:.14em;text-transform:uppercase;font-weight:600;
+    padding:3px 8px;border-radius:20px;flex:none;
+  }
+  .tag.nice{color:var(--nice);background:var(--cooperate-dim)}
+  .tag.nasty{color:var(--nasty);background:var(--defect-dim)}
+
+  /* ---------- controls ---------- */
+  .controls{display:flex;align-items:flex-end;gap:18px;flex-wrap:wrap;margin-bottom:22px}
+  .ctl{display:flex;flex-direction:column;gap:6px}
+  .ctl label{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+  .ctl select,.ctl input[type=range]{
+    background:var(--panel-2);border:1px solid var(--border);color:var(--ink);
+    border-radius:8px;padding:8px 10px;font-family:inherit;font-size:14px;outline:none;
+  }
+  .ctl input[type=range]{padding:0;height:34px;accent-color:var(--accent)}
+  .btn{
+    background:var(--accent);color:#141414;border:none;cursor:pointer;
+    font-family:inherit;font-weight:700;font-size:14px;letter-spacing:.02em;
+    padding:11px 26px;border-radius:8px;transition:transform .08s ease,filter .12s ease;
+  }
+  .btn:hover{filter:brightness(1.08)} .btn:active{transform:scale(.97)}
+  .btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--border);font-weight:500}
+  .btn.ghost:hover{border-color:var(--muted)}
+  .btn:disabled{opacity:.4;cursor:default;transform:none}
+  #randLabel{font-size:12px;color:var(--muted)}
+
+  /* ---------- main stage ---------- */
+  .stage{display:grid;grid-template-columns:1fr 340px;gap:14px;align-items:start}
+  @media (max-width:980px){.stage{grid-template-columns:1fr}}
+
+  /* match panel */
+  #matchCard{min-height:430px;display:flex;flex-direction:column}
+  .match-head{display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+  .matchup{font-size:20px;font-weight:700}
+  .matchup .vs{color:var(--muted);font-weight:400;font-size:14px;margin:0 8px}
+  .matchup .dot{display:inline-block;vertical-align:middle;margin-right:7px}
+  .roundinfo{font-size:13px;color:var(--muted)}
+  .roundinfo b{color:var(--ink)}
+
+  .faceoff{display:grid;grid-template-columns:1fr 70px 1fr;gap:10px;align-items:stretch;margin-bottom:14px}
+  .playerbox{background:var(--panel-2);border:1px solid var(--border);border-radius:10px;padding:14px;text-align:center}
+  .playerbox .pname{font-size:13px;font-weight:600;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .playerbox .pscore{font-size:30px;font-weight:600;margin-top:6px}
+  .playerbox .move{
+    font-size:46px;font-weight:700;line-height:1;margin-top:8px;
+    font-family:"IBM Plex Mono",monospace;
+    transition:color .15s ease;
+  }
+  .midcol{display:flex;flex-direction:column;justify-content:center;align-items:center;gap:6px}
+  .midcol .gain{font-size:12px;color:var(--muted);text-align:center;line-height:1.5}
+  .midcol .gain b{display:block;font-size:16px;color:var(--ink)}
+
+  .histwrap{flex:1;overflow-x:auto;border:1px solid var(--border);border-radius:10px;background:var(--panel-2);padding:10px 12px}
+  .histrow{display:flex;gap:3px;min-width:max-content}
+  .histcol{display:flex;flex-direction:column;gap:3px}
+  .sq{
+    width:14px;height:14px;border-radius:3px;
+  }
+  .sq.C{background:var(--cooperate)}
+  .sq.D{background:var(--defect)}
+  .sq.dimC{background:var(--cooperate);opacity:.35}
+  .sq.dimD{background:var(--defect);opacity:.35}
+  .hist-meta{display:flex;justify-content:space-between;color:var(--muted);font-size:11.5px;margin-top:8px}
+  .empty-hist{color:var(--muted);font-size:13px;padding:24px 0;text-align:center}
+
+  /* leaderboard */
+  #boardCard{padding-bottom:12px}
+  .lb-row{
+    display:grid;grid-template-columns:22px 1fr auto;gap:10px;align-items:center;
+    padding:10px 4px;border-bottom:1px solid var(--border);
+  }
+  .lb-row:last-child{border-bottom:none}
+  .lb-rank{font-size:13px;color:var(--muted);font-weight:600}
+  .lb-main{display:flex;flex-direction:column;gap:6px;min-width:0}
+  .lb-name-line{display:flex;align-items:center;gap:8px;min-width:0}
+  .lb-name-line .name{font-weight:600;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .lb-bar-track{height:7px;border-radius:4px;background:var(--panel-2);overflow:hidden}
+  .lb-bar{height:100%;border-radius:4px;transition:width .25s ease}
+  .lb-score{font-size:16px;font-weight:600;white-space:nowrap}
+  .lb-row.leader .lb-score{color:var(--accent)}
+  .lb-row.leader .lb-rank{color:var(--accent)}
+
+  /* results */
+  #results{display:none;margin-top:14px}
+  #results .card{margin-bottom:14px}
+  .winner-banner{display:flex;align-items:center;gap:16px}
+  .trophy{
+    width:46px;height:46px;border-radius:10px;background:var(--accent);
+    display:flex;align-items:center;justify-content:center;color:#141414;
+    font-weight:700;font-size:22px;flex:none;
+  }
+  .winner-banner .t1{font-size:20px;font-weight:700}
+  .winner-banner .t2{color:var(--muted);font-size:13px;margin-top:3px}
+  .final-table{width:100%;border-collapse:collapse;font-size:13.5px}
+  .final-table th{
+    text-align:left;color:var(--muted);font-weight:500;font-size:11px;
+    letter-spacing:.12em;text-transform:uppercase;padding:8px 10px;border-bottom:1px solid var(--border);
+  }
+  .final-table td{padding:9px 10px;border-bottom:1px solid var(--border)}
+  .final-table tr:last-child td{border-bottom:none}
+  .final-table .num{text-align:right}
+  .final-table tr.winner{background:rgba(242,201,76,.07)}
+  .final-table tr.winner td:first-child{color:var(--accent);font-weight:700}
+  .pill{font-size:10px;letter-spacing:.12em;text-transform:uppercase;font-weight:600;padding:2px 8px;border-radius:12px}
+  .pill.nice{color:var(--nice);background:var(--cooperate-dim)}
+  .pill.nasty{color:var(--nasty);background:var(--defect-dim)}
+
+  .progress-line{font-size:12px;color:var(--muted);margin-bottom:10px}
+  .progress-line b{color:var(--ink)}
+  ::-webkit-scrollbar{height:8px;width:8px}
+  ::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="kicker">Axelrod Tournament · 1980</div>
+  <h1>Prisoner's Dilemma — Strategy Tournament</h1>
+  <p class="sub">Five strategies face every other strategy — and themselves. Round counts are randomized
+  so no one knows when the game ends. Highest total score wins.</p>
+</header>
+
+<div class="top">
+  <div class="card">
+    <h2>Payoffs per round</h2>
+    <div class="payoff">
+      <div class="cell"><div class="lbl">C · C</div><div class="val"><span class="co mono">3</span> · <span class="co mono">3</span></div></div>
+      <div class="cell"><div class="lbl">D · C</div><div class="val"><span class="de mono">5</span> · <span class="mono" style="color:var(--muted)">0</span></div></div>
+      <div class="cell"><div class="lbl">C · D</div><div class="val"><span class="mono" style="color:var(--muted)">0</span> · <span class="de mono">5</span></div></div>
+      <div class="cell"><div class="lbl">D · D</div><div class="val"><span class="de mono">1</span> · <span class="de mono">1</span></div></div>
+    </div>
+  </div>
+  <div class="card">
+    <h2>The strategies</h2>
+    <div class="roster" id="roster"></div>
+  </div>
+</div>
+
+<div class="controls">
+  <div class="ctl">
+    <label>Rounds per match (range)</label>
+    <div style="display:flex;gap:8px;align-items:center">
+      <input type="number" id="minRounds" value="180" min="20" max="500" style="width:76px;background:var(--panel-2);border:1px solid var(--border);color:var(--ink);border-radius:8px;padding:8px 10px;font-family:inherit">
+      <span style="color:var(--muted)">–</span>
+      <input type="number" id="maxRounds" value="220" min="20" max="500" style="width:76px;background:var(--panel-2);border:1px solid var(--border);color:var(--ink);border-radius:8px;padding:8px 10px;font-family:inherit">
+      <label style="display:flex;gap:6px;align-items:center;font-size:12.5px;color:var(--muted);text-transform:none;letter-spacing:0">
+        <input type="checkbox" id="randomize" checked style="accent-color:var(--accent)"> randomize each match
+      </label>
+    </div>
+  </div>
+  <div class="ctl">
+    <label>Speed</label>
+    <input type="range" id="speed" min="0" max="100" value="72" style="width:170px">
+  </div>
+  <div class="ctl">
+    <label>&nbsp;</label>
+    <button class="btn" id="runBtn">Run Tournament</button>
+  </div>
+  <div class="ctl">
+    <label>&nbsp;</label>
+    <button class="btn ghost" id="skipBtn">Skip to result</button>
+  </div>
+</div>
+
+<div class="stage">
+  <div class="card" id="matchCard">
+    <h2>Live match</h2>
+    <div class="progress-line" id="progressLine">Press <b>Run Tournament</b> to begin — 15 matchups (each strategy plays every other, plus itself).</div>
+    <div class="match-head">
+      <div class="matchup" id="matchup">&nbsp;</div>
+      <div class="roundinfo" id="roundInfo"></div>
+    </div>
+    <div class="faceoff">
+      <div class="playerbox">
+        <div class="pname" id="pAName">—</div>
+        <div class="move" id="pAMove" style="color:var(--muted)">·</div>
+        <div class="pscore mono" id="pAScore">0</div>
+      </div>
+      <div class="midcol">
+        <div class="gain">round<br><b class="mono" id="roundGain">—</b></div>
+        <div class="gain">payout<br><b class="mono" id="roundPayoff">—</b></div>
+      </div>
+      <div class="playerbox">
+        <div class="pname" id="pBName">—</div>
+        <div class="move" id="pBMove" style="color:var(--muted)">·</div>
+        <div class="pscore mono" id="pBScore">0</div>
+      </div>
+    </div>
+    <div class="histwrap" id="histWrap">
+      <div class="empty-hist">Move history will appear here — green squares are cooperation, red are defection.</div>
+    </div>
+    <div class="hist-meta"><span id="histLabel"></span><span id="coRate"></span></div>
+  </div>
+
+  <div class="card" id="boardCard">
+    <h2>Leaderboard — total points</h2>
+    <div id="leaderboard"></div>
+  </div>
+</div>
+
+<div id="results">
+  <div class="card">
+    <div class="winner-banner">
+      <div class="trophy">★</div>
+      <div>
+        <div class="t1" id="winnerName">—</div>
+        <div class="t2" id="winnerSub">—</div>
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <h2>Final standings</h2>
+    <table class="final-table">
+      <thead><tr><th>#</th><th>Strategy</th><th>Type</th><th class="num">Total points</th><th class="num">Avg / round</th></tr></thead>
+      <tbody id="finalBody"></tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+"use strict";
+
+/* ---------------- strategies ----------------
+   Each receives (myMoves, theirMoves) as arrays of "C"/"D",
+   and returns "C" or "D" for the next round.                 */
+
+const STRATEGIES = [
+  {
+    id:"tft", name:"Tit for Tat", nice:true, color:"#f2c94c",
+    desc:"Cooperates first, then copies the opponent's last move exactly.",
+    play:(me,them)=> them.length===0 ? "C" : them[them.length-1]
+  },
+  {
+    id:"tft2t", name:"Tit for Two Tats", nice:true, color:"#5bb8f5",
+    desc:"Extra forgiving — defects only after two defections in a row.",
+    play:(me,them)=>{
+      const n=them.length;
+      if(n<2) return "C";
+      return (them[n-1]==="D" && them[n-2]==="D") ? "D" : "C";
+    }
+  },
+  {
+    id:"friedman", name:"Friedman", nice:true, color:"#7b6cf6",
+    desc:"Never defects first — but one defection and it defects forever (unforgiving).",
+    play:(me,them)=> them.includes("D") ? "D" : "C"
+  },
+  {
+    id:"joss", name:"Joss", nice:false, color:"#f0793a",
+    desc:"Mostly copies the opponent, but sneaks in a defection ~10% of the time.",
+    play:(me,them)=>{
+      if(them.length===0) return "C";
+      const last=them[them.length-1];
+      if(last==="D") return "D";
+      return Math.random()<0.10 ? "D" : "C";
+    }
+  },
+  {
+    id:"alld", name:"Always Defect", nice:false, color:"#e05299",
+    desc:"Defects every single round. Wins each exchange, loses the tournament.",
+    play:()=>"D"
+  }
+];
+
+const PAY = { "C,C":[3,3], "C,D":[0,5], "D,C":[5,0], "D,D":[1,1] };
+const byId = Object.fromEntries(STRATEGIES.map(s=>[s.id,s]));
+
+/* ---------------- roster ---------------- */
+const rosterEl = document.getElementById("roster");
+STRATEGIES.forEach(s=>{
+  const row=document.createElement("div");
+  row.className="strat-row";
+  row.innerHTML=`<span class="dot" style="background:${s.color}"></span>
+    <span class="name">${s.name}</span>
+    <span class="desc">${s.desc}</span>
+    <span class="tag ${s.nice?"nice":"nasty"}">${s.nice?"Nice":"Nasty"}</span>`;
+  rosterEl.appendChild(row);
+});
+
+/* ---------------- controls ---------------- */
+const speedEl=document.getElementById("speed");
+const minR=document.getElementById("minRounds"), maxR=document.getElementById("maxRounds");
+const randCb=document.getElementById("randomize");
+const runBtn=document.getElementById("runBtn"), skipBtn=document.getElementById("skipBtn");
+const resultsEl=document.getElementById("results");
+
+function delayMs(){
+  // 0..100 slider → 900ms..6ms per round (log scale)
+  const t=speedEl.value/100;
+  return Math.max(6, Math.round(900*Math.pow(0.0067, t)));
+}
+
+/* ---------------- state ---------------- */
+let running=false, runToken=0;
+let totals={}, roundsPlayed={}, pairList=[];
+
+function resetTotals(){
+  totals={}; roundsPlayed={};
+  STRATEGIES.forEach(s=>{ totals[s.id]=0; roundsPlayed[s.id]=0; });
+  pairList=[];
+  for(let i=0;i<STRATEGIES.length;i++)
+    for(let j=i;j<STRATEGIES.length;j++)
+      pairList.push([STRATEGIES[i],STRATEGIES[j]]);
+}
+
+/* ---------------- UI helpers ---------------- */
+const $=id=>document.getElementById(id);
+const moveSpan=(el,mv)=>{
+  el.textContent = mv==="C" ? "C" : mv==="D" ? "D" : "·";
+  el.style.color = mv==="C" ? "var(--cooperate)" : mv==="D" ? "var(--defect)" : "var(--muted)";
+};
+
+function renderLeaderboard(){
+  const sorted=[...STRATEGIES].sort((a,b)=>totals[b.id]-totals[a.id]);
+  const max=Math.max(1,...sorted.map(s=>totals[s.id]));
+  const lb=$("leaderboard"); lb.innerHTML="";
+  sorted.forEach((s,i)=>{
+    const isLeader = i===0 && totals[s.id]>0;
+    const row=document.createElement("div");
+    row.className="lb-row"+(isLeader?" leader":"");
+    row.innerHTML=`
+      <div class="lb-rank mono">${i+1}</div>
+      <div class="lb-main">
+        <div class="lb-name-line">
+          <span class="dot" style="background:${s.color}"></span>
+          <span class="name">${s.name}</span>
+          <span class="tag ${s.nice?"nice":"nasty"}" style="margin-left:auto">${s.nice?"Nice":"Nasty"}</span>
+        </div>
+        <div class="lb-bar-track"><div class="lb-bar" style="width:${Math.round(100*totals[s.id]/max)}%;background:${s.color}"></div></div>
+      </div>
+      <div class="lb-score mono">${totals[s.id].toLocaleString()}</div>`;
+    lb.appendChild(row);
+  });
+}
+
+function renderHistory(aHist,bHist){
+  const wrap=$("histWrap");
+  if(aHist.length===0){
+    wrap.innerHTML='<div class="empty-hist">Move history will appear here — green squares are cooperation, red are defection.</div>';
+    return;
+  }
+  const shown=aHist.slice(-64);
+  const offset=aHist.length-shown.length;   // align player B's history with the shown window
+  let html='<div class="histrow">';
+  for(let i=0;i<shown.length;i++){
+    const cls=(m,dim)=>m==="C" ? (dim?"dimC":"C") : (dim?"dimD":"D");
+    html+=`<div class="histcol">
+      <div class="sq ${cls(shown[i],false)}"></div>
+      <div class="sq ${cls(bHist[offset+i],false)}"></div>
+    </div>`;
+  }
+  html+="</div>";
+  wrap.innerHTML=html;
+  wrap.scrollLeft=wrap.scrollWidth;
+  $("histLabel").textContent=`last ${shown.length} of ${aHist.length} rounds (top row = ${$("pAName").textContent})`;
+}
+
+function renderMatch(idx){
+  const [A,B]=pairList[idx];
+  $("matchup").innerHTML =
+    `<span class="dot" style="background:${A.color}"></span>${A.name}
+     <span class="vs">vs</span>
+     <span class="dot" style="background:${B.color}"></span>${B.name}`;
+  $("pAName").textContent=A.name; $("pBName").textContent=B.name;
+  moveSpan($("pAMove"),null); moveSpan($("pBMove"),null);
+  $("pAScore").textContent="0"; $("pBScore").textContent="0";
+  $("roundInfo").textContent="Round 0";
+  $("roundGain").textContent="—"; $("roundPayoff").textContent="—";
+  $("coRate").textContent="";
+  renderHistory([],[]);
+}
+
+function updateProgress(idx){
+  $("progressLine").innerHTML=`Match <b>${idx+1} / ${pairList.length}</b> — each strategy plays every other strategy and a copy of itself.`;
+}
+
+/* ---------------- tournament engine ---------------- */
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+
+async function runTournament(){
+  if(running){ runToken++; }
+  const token=runToken+1; runToken=token;
+  running=true;
+  runBtn.disabled=true; skipBtn.disabled=false;
+  resultsEl.style.display="none";
+  resetTotals();
+  renderLeaderboard();
+
+  let lo=parseInt(minR.value)||200, hi=parseInt(maxR.value)||200;
+  if(hi<lo) hi=lo;
+  const fixed=!randCb.checked;
+
+  for(let m=0;m<pairList.length;m++){
+    if(token!==runToken) return;
+    const [A,B]=pairList[m];
+    const rounds = fixed ? lo : lo + Math.floor(Math.random()*(hi-lo+1));
+    updateProgress(m);
+    renderMatch(m);
+
+    const aHist=[], bHist=[];
+    let aScore=0, bScore=0;
+
+    for(let r=0;r<rounds;r++){
+      if(token!==runToken) return;
+      const a=A.play(aHist,bHist), b=B.play(bHist,aHist);
+      aHist.push(a); bHist.push(b);
+      const [pa,pb]=PAY[`${a},${b}`];
+      aScore+=pa; bScore+=pb;
+      totals[A.id]+=pa; totals[B.id]+=pb;
+      roundsPlayed[A.id]+=1; roundsPlayed[B.id]+=1;
+
+      // live UI
+      moveSpan($("pAMove"),a); moveSpan($("pBMove"),b);
+      $("pAScore").textContent=aScore.toLocaleString();
+      $("pBScore").textContent=bScore.toLocaleString();
+      $("roundInfo").innerHTML=`Round <b>${r+1}</b> / ${rounds}`;
+      $("roundGain").innerHTML=`${a==="C"?"C":"D"}·${b==="C"?"C":"D"} → <span class="${pa>pb?"co":(pa===pb?"":"de")}">${pa}+${pb}</span>`;
+      $("roundPayoff").textContent=`${a}${b}`;
+      $("coRate").textContent=`cooperation this match: ${Math.round(100*(aHist.filter(x=>x==="C").length+bHist.filter(x=>x==="C").length)/(2*(r+1)))}%`;
+      renderHistory(aHist,bHist);
+      renderLeaderboard();
+
+      if(delayMs()>0) await sleep(delayMs());
+    }
+    // brief pause between matches
+    if(token!==runToken) return;
+    await sleep(Math.max(120, delayMs()*3));
+  }
+
+  finishTournament(token);
+}
+
+function skipToEnd(){
+  runToken++; // cancel any animated loop
+  const token=runToken; running=false;
+  runBtn.disabled=false;
+
+  // recompute everything instantly from scratch (deterministic except Joss)
+  resetTotals();
+  let lo=parseInt(minR.value)||200, hi=parseInt(maxR.value)||200;
+  if(hi<lo) hi=lo;
+  const fixed=!randCb.checked;
+  const log=[];
+
+  pairList.forEach(([A,B])=>{
+    const rounds=fixed?lo:lo+Math.floor(Math.random()*(hi-lo+1));
+    const aHist=[],bHist=[]; let aScore=0,bScore=0;
+    for(let r=0;r<rounds;r++){
+      const a=A.play(aHist,bHist), b=B.play(bHist,aHist);
+      aHist.push(a); bHist.push(b);
+      const [pa,pb]=PAY[`${a},${b}`];
+      aScore+=pa; bScore+=pb;
+    }
+    totals[A.id]+=aScore; totals[B.id]+=bScore;
+    roundsPlayed[A.id]+=rounds; roundsPlayed[B.id]+=rounds;
+    log.push({A:A.name,B:B.name,rounds,aScore,bScore});
+  });
+
+  // show last matchup statically
+  const last=pairList[pairList.length-1];
+  renderMatch(pairList.length-1);
+  updateProgress(pairList.length-1);
+  $("roundInfo").innerHTML="complete";
+
+  renderLeaderboard();
+  finishTournament(token);
+  return log;
+}
+
+function finishTournament(token){
+  if(token!==runToken) return;
+  running=false;
+  runBtn.disabled=false; skipBtn.disabled=true;
+  const sorted=[...STRATEGIES].sort((a,b)=>totals[b.id]-totals[a.id]);
+  const w=sorted[0];
+  $("winnerName").textContent=`${w.name} wins the tournament`;
+  $("winnerSub").textContent=`${totals[w.id].toLocaleString()} total points across ${roundsPlayed[w.id].toLocaleString()} rounds — nice, retaliatory, forgiving and clear.`;
+  const body=$("finalBody"); body.innerHTML="";
+  sorted.forEach((s,i)=>{
+    const avg=totals[s.id]/roundsPlayed[s.id];
+    const tr=document.createElement("tr");
+    if(i===0) tr.className="winner";
+    tr.innerHTML=`<td class="mono">${i+1}</td>
+      <td><span class="dot" style="background:${s.color};display:inline-block;vertical-align:middle;margin-right:8px"></span>${s.name}</td>
+      <td><span class="pill ${s.nice?"nice":"nasty"}">${s.nice?"Nice":"Nasty"}</span></td>
+      <td class="num mono">${totals[s.id].toLocaleString()}</td>
+      <td class="num mono">${avg.toFixed(2)} pts/round</td>`;
+    body.appendChild(tr);
+  });
+  resultsEl.style.display="block";
+  resultsEl.scrollIntoView({behavior:"smooth",block:"nearest"});
+}
+
+runBtn.addEventListener("click",runTournament);
+skipBtn.addEventListener("click",skipToEnd);
+skipBtn.disabled=true;
+
+resetTotals();
+renderLeaderboard();
+</script>
+</body>
+</html>
